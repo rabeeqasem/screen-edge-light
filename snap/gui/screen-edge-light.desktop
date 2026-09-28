@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Screen Edge Light
+Comment=Ring light for your monitor
+Exec=screen-edge-light
+Icon=${SNAP}/meta/gui/icon.svg
+Terminal=false
+Type=Application
+Categories=Utility;
+StartupNotify=false

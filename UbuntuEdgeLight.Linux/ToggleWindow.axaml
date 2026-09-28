@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="UbuntuEdgeLight.ToggleWindow"
+        Width="44" Height="44"
+        Title="Edge Light Controls"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        SystemDecorations="None"
+        Topmost="True"
+        ShowInTaskbar="False"
+        CanResize="False">
+
+    <!-- Small always-on-top affordance to open/close the control panel, since the
+         GNOME system tray is unavailable under snap confinement. -->
+    <Border Background="#CC1A1A1A" CornerRadius="22" BorderBrush="#44FFFFFF" BorderThickness="1">
+        <Button Content="⚙"
+                FontSize="20"
+                Foreground="White"
+                Background="Transparent"
+                BorderThickness="0"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                Click="Toggle_Click"
+                ToolTip.Tip="Open / close Screen Edge Light controls"/>
+    </Border>
+</Window>

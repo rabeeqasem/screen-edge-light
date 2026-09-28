@@ -1,8 +1,8 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsEdgeLight", "WindowsEdgeLight\WindowsEdgeLight.csproj", "{C2187EC4-5511-1F4A-A7C5-D7D114D039DC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UbuntuEdgeLight.Linux", "UbuntuEdgeLight.Linux\UbuntuEdgeLight.Linux.csproj", "{D6D7A7FD-9A9E-4D4A-9642-E3C29CB89BD6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,10 +10,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C2187EC4-5511-1F4A-A7C5-D7D114D039DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C2187EC4-5511-1F4A-A7C5-D7D114D039DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C2187EC4-5511-1F4A-A7C5-D7D114D039DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C2187EC4-5511-1F4A-A7C5-D7D114D039DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6D7A7FD-9A9E-4D4A-9642-E3C29CB89BD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6D7A7FD-9A9E-4D4A-9642-E3C29CB89BD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6D7A7FD-9A9E-4D4A-9642-E3C29CB89BD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6D7A7FD-9A9E-4D4A-9642-E3C29CB89BD6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

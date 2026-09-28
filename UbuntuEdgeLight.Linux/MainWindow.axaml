@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="UbuntuEdgeLight.MainWindow"
+        Title="Ubuntu Edge Light"
+        TransparencyLevelHint="Transparent"
+        Background="#01000000"
+        SystemDecorations="None"
+        Topmost="True"
+        ShowInTaskbar="False"
+        IsHitTestVisible="True">
+
+    <Grid Name="MainGrid">
+        <!-- Thin border mode (classic edge light) -->
+        <Border Name="EdgeLightBorder"
+                BorderThickness="10"
+                BoxShadow="0 0 50 10 #FFFFFF">
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                    <GradientStop Offset="0.0" Color="#FFFFFF" />
+                    <GradientStop Offset="0.3" Color="#F0F0F0" />
+                    <GradientStop Offset="0.5" Color="#FFFFFF" />
+                    <GradientStop Offset="0.7" Color="#F0F0F0" />
+                    <GradientStop Offset="1.0" Color="#FFFFFF" />
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+        </Border>
+
+        <!-- Studio flood mode: each edge casts a wide soft glow inward, like a ring light -->
+        <Grid Name="StudioFloodLayer" IsVisible="False">
+            <Rectangle Name="FloodTop" VerticalAlignment="Top" HorizontalAlignment="Stretch" Height="180">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0.0" Color="#FFFFFFFF" />
+                        <GradientStop Offset="1.0" Color="#00FFFFFF" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle Name="FloodBottom" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Height="180">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
+                        <GradientStop Offset="0.0" Color="#FFFFFFFF" />
+                        <GradientStop Offset="1.0" Color="#00FFFFFF" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle Name="FloodLeft" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="180">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0.0" Color="#FFFFFFFF" />
+                        <GradientStop Offset="1.0" Color="#00FFFFFF" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle Name="FloodRight" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="180">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="100%,0%" EndPoint="0%,0%">
+                        <GradientStop Offset="0.0" Color="#FFFFFFFF" />
+                        <GradientStop Offset="1.0" Color="#00FFFFFF" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+        </Grid>
+    </Grid>
+</Window>

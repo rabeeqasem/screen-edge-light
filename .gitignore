@@ -3,6 +3,9 @@ bin/
 obj/
 publish/
 
+# Packed snap artifacts (published to the store; don't belong in git)
+*.snap
+
 # Visual Studio cache/options
 .vs/
 .vscode/

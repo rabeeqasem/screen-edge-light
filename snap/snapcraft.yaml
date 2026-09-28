@@ -1,0 +1,66 @@
+name: screen-edge-light
+title: Screen Edge Light
+base: core24
+version: '1.1.8'
+summary: Adjustable screen edge light for video calls and streaming
+description: |
+  Screen Edge Light creates a customizable glowing border around your screen.
+  It acts as a ring light for video calls, streaming, or ambient lighting.
+  Features include adjustable brightness, color temperature (warm/cool),
+  border thickness, and screen margin.
+license: MIT
+contact: rabee.qasem93@gmail.com
+source-code: https://github.com/rabeeqasem/WindowsEdgeLight
+website: https://github.com/rabeeqasem/WindowsEdgeLight
+
+grade: stable
+confinement: strict
+
+parts:
+  screen-edge-light:
+    plugin: dump
+    source: .
+    # Use the Ubuntu 24.04 (core24) native .NET SDK from apt, NOT the core20-based
+    # `dotnet-sdk` snap. The snap stamps a core20 loader (/snap/core20/.../ld-linux)
+    # into the published apphost, which then mismatches core24's glibc at runtime
+    # (undefined symbol _dl_audit_symbind_alt) and the app dies before it can draw.
+    build-packages:
+      - dotnet-sdk-8.0
+      - build-essential
+    stage-packages:
+      - libice6
+      - libsm6
+      - libx11-6
+      - libxext6
+      - libxrender1
+      - libxi6
+      - libxtst6
+      - libxt6
+      - libxrandr2
+      - libxcursor1
+      - libxinerama1
+      - libfontconfig1
+    override-build: |
+      dotnet publish UbuntuEdgeLight.Linux/UbuntuEdgeLight.Linux.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o $SNAPCRAFT_PART_INSTALL/bin/
+      mv $SNAPCRAFT_PART_INSTALL/bin/UbuntuEdgeLight.Linux $SNAPCRAFT_PART_INSTALL/bin/screen-edge-light
+
+apps:
+  screen-edge-light:
+    command: bin/screen-edge-light
+    extensions: [gnome]
+    environment:
+      # The single-file self-contained app extracts its bundled native libs at
+      # startup. Its default target ($HOME/.cache/dotnet_bundle_extract) is blocked
+      # by snap's `home` interface (no hidden dirs), so point it at a writable,
+      # confined location instead — otherwise the app aborts before drawing.
+      DOTNET_BUNDLE_EXTRACT_BASE_DIR: $SNAP_USER_COMMON/dotnet_bundle_extract
+    plugs:
+      - x11
+      - opengl
+      - home
+      - desktop
+      - desktop-legacy
+      # Grants access to the AppIndicator / StatusNotifier tray APIs and the
+      # com.canonical.dbusmenu interface. Without this, apparmor blocks GNOME from
+      # reading the tray menu, so "Show Control Window..." / Exit are unreachable.
+      - unity7
