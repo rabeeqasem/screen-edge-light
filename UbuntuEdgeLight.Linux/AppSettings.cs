@@ -37,18 +37,20 @@ public class AppSettings
         "UbuntuEdgeLight",
         "settings.json");
 
-    public double Opacity { get; set; } = 1.0;
-    public double ColorTemperature { get; set; } = 0.5;
-    public double BorderThickness { get; set; } = 10.0;
+    // First-run defaults match the "Soft Key" preset: a flattering, face-lighting studio
+    // flood is the best first impression for a video-call light.
+    public double Opacity { get; set; } = 0.85;
+    public double ColorTemperature { get; set; } = 0.45;
+    public double BorderThickness { get; set; } = 14.0;
     public double Margin { get; set; } = 0.0;
     public double CornerRadius { get; set; } = 0.0;
 
     // --- Studio Light ---
     /// <summary>Thin border vs. wide studio flood.</summary>
-    public IlluminationMode Illumination { get; set; } = IlluminationMode.ThinBorder;
+    public IlluminationMode Illumination { get; set; } = IlluminationMode.StudioFlood;
 
     /// <summary>Currently selected preset (Custom when sliders are hand-tuned).</summary>
-    public LightMode Preset { get; set; } = LightMode.Custom;
+    public LightMode Preset { get; set; } = LightMode.SoftKey;
 
     /// <summary>Width in pixels of the studio flood gradient (how far light spreads inward).</summary>
     public double Spread { get; set; } = 180.0;

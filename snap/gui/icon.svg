@@ -1,20 +1,45 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="10" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-    </filter>
-    <linearGradient id="edgeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#dcebff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#ffdcb4;stop-opacity:1" />
+    <!-- Night-sky tile so the glow reads on both light (store) and dark (dock) backgrounds -->
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262B3D"/>
+      <stop offset="1" stop-color="#11131C"/>
     </linearGradient>
+    <!-- Cool daylight top-left to warm studio bottom-right: the app's color-temperature range -->
+    <linearGradient id="light" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E4F0FF"/>
+      <stop offset="0.5" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFD9A8"/>
+    </linearGradient>
+    <!-- The light falling on the subject -->
+    <radialGradient id="spill" cx="0.5" cy="0.62" r="0.5">
+      <stop offset="0" stop-color="#FFF4E2" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#FFF4E2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="person" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF1DC"/>
+      <stop offset="1" stop-color="#E9C9A0"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <clipPath id="screen">
+      <rect x="112" y="112" width="288" height="288" rx="30"/>
+    </clipPath>
   </defs>
-  
-  <!-- Outer Glow -->
-  <rect x="60" y="60" width="392" height="392" rx="40" ry="40" 
-        style="fill:none;stroke:url(#edgeGradient);stroke-width:15;opacity:0.6;filter:url(#glow)" />
-        
-  <!-- Main Border -->
-  <rect x="60" y="60" width="392" height="392" rx="40" ry="40" 
-        style="fill:none;stroke:url(#edgeGradient);stroke-width:15;" />
+
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#tile)"/>
+
+  <!-- Soft halo, then the crisp edge light itself -->
+  <rect x="112" y="112" width="288" height="288" rx="36" fill="none"
+        stroke="url(#light)" stroke-width="30" opacity="0.85" filter="url(#glow)"/>
+  <rect x="112" y="112" width="288" height="288" rx="36" fill="none"
+        stroke="url(#light)" stroke-width="18"/>
+
+  <!-- Lit face on a video call -->
+  <g clip-path="url(#screen)">
+    <rect x="112" y="112" width="288" height="288" fill="url(#spill)"/>
+    <circle cx="256" cy="232" r="46" fill="url(#person)"/>
+    <path d="M160 400 C160 322 204 292 256 292 C308 292 352 322 352 400 Z" fill="url(#person)"/>
+  </g>
 </svg>

@@ -1,9 +1,11 @@
 [Desktop Entry]
 Name=Screen Edge Light
-Comment=Ring light for your monitor
+GenericName=Ring Light
+Comment=Soft ring light for video calls and streaming
+Keywords=ring light;webcam;video call;zoom;meet;teams;streaming;lighting;glow;border;
 Exec=screen-edge-light
 Icon=${SNAP}/meta/gui/icon.svg
 Terminal=false
 Type=Application
-Categories=Utility;
+Categories=AudioVideo;Video;Utility;
 StartupNotify=false

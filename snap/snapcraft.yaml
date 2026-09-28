@@ -1,17 +1,35 @@
 name: screen-edge-light
 title: Screen Edge Light
 base: core24
-version: '1.1.8'
-summary: Adjustable screen edge light for video calls and streaming
+version: '1.2.0'
+summary: Ring light for video calls - your screen edges become a soft studio light
 description: |
-  Screen Edge Light creates a customizable glowing border around your screen.
-  It acts as a ring light for video calls, streaming, or ambient lighting.
-  Features include adjustable brightness, color temperature (warm/cool),
-  border thickness, and screen margin.
+  Look great on every video call - no extra hardware needed.
+
+  Screen Edge Light turns the edges of your monitor into a soft, adjustable ring
+  light that lights up your face for Zoom, Google Meet, Teams, Discord, OBS and
+  streaming. It sits on top of everything and lets every click pass straight
+  through, so you keep working normally while it glows.
+
+  **Features**
+
+  * **Studio presets** - Soft Key, Warm Studio, Daylight, Cool and Candle, one click each
+  * **Studio Flood** - a wide, soft glow that actually casts light on you, or a classic thin glowing border
+  * **Spotlight** - instant full-brightness boost, one more click to go back
+  * **Color temperature** - from crisp cool daylight to warm candlelight
+  * **Brightness, spread, border thickness, distance from edge and corner roundness**
+  * **Auto day / night** - warmer and dimmer in the evening, bright and neutral at midday
+  * **Match screen colors** - tints the light to what's on your screen (X11 sessions)
+  * **Click-through overlay** - never blocks your desktop
+  * **Start on login** - your light is ready before your first meeting
+  * **Keyboard shortcut** - bind `screen-edge-light --toggle` to any key in Settings > Keyboard
+
+  All settings are remembered between sessions. Free and open source (MIT).
 license: MIT
 contact: rabee.qasem93@gmail.com
-source-code: https://github.com/rabeeqasem/WindowsEdgeLight
-website: https://github.com/rabeeqasem/WindowsEdgeLight
+issues: https://github.com/rabeeqasem/screen-edge-light/issues
+source-code: https://github.com/rabeeqasem/screen-edge-light
+website: https://github.com/rabeeqasem/screen-edge-light
 
 grade: stable
 confinement: strict
@@ -25,7 +43,7 @@ parts:
     # into the published apphost, which then mismatches core24's glibc at runtime
     # (undefined symbol _dl_audit_symbind_alt) and the app dies before it can draw.
     build-packages:
-      - dotnet-sdk-8.0
+      - dotnet-sdk-10.0
       - build-essential
     stage-packages:
       - libice6
@@ -48,6 +66,9 @@ apps:
   screen-edge-light:
     command: bin/screen-edge-light
     extensions: [gnome]
+    # "Start on login": the app writes $SNAP_USER_DATA/.config/autostart/<this file>
+    # when the user ticks the box, and snapd's session agent launches it at login.
+    autostart: screen-edge-light.desktop
     environment:
       # The single-file self-contained app extracts its bundled native libs at
       # startup. Its default target ($HOME/.cache/dotnet_bundle_extract) is blocked
@@ -57,7 +78,6 @@ apps:
     plugs:
       - x11
       - opengl
-      - home
       - desktop
       - desktop-legacy
       # Grants access to the AppIndicator / StatusNotifier tray APIs and the

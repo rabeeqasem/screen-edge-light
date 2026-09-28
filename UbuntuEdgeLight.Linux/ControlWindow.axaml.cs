@@ -79,8 +79,23 @@ public partial class ControlWindow : Window
         var chkFlood = this.FindControl<CheckBox>("ChkFlood");
         if (chkFlood != null) chkFlood.IsChecked = flood;
 
+        bool autoDayNight = _mainWindow.CurrentAdaptiveTimeOfDay;
         var chkDay = this.FindControl<CheckBox>("ChkAutoDayNight");
-        if (chkDay != null) chkDay.IsChecked = _mainWindow.CurrentAdaptiveTimeOfDay;
+        if (chkDay != null) chkDay.IsChecked = autoDayNight;
+
+        // While auto day/night is on it drives brightness and color, so those sliders
+        // would do nothing visible; lock them and say why.
+        var brightness = this.FindControl<Slider>("SliderBrightness");
+        var color = this.FindControl<Slider>("SliderColor");
+        if (brightness != null) brightness.IsEnabled = !autoDayNight;
+        if (color != null) color.IsEnabled = !autoDayNight;
+        var brightnessValue = this.FindControl<TextBlock>("BrightnessValue");
+        if (brightnessValue != null) brightnessValue.IsVisible = !autoDayNight;
+        var colorAuto = this.FindControl<TextBlock>("ColorAutoLabel");
+        if (colorAuto != null) colorAuto.IsVisible = autoDayNight;
+
+        var chkAutostart = this.FindControl<CheckBox>("ChkAutostart");
+        if (chkAutostart != null) chkAutostart.IsChecked = Autostart.IsEnabled;
 
         var chkAmbient = this.FindControl<CheckBox>("ChkAmbient");
         if (chkAmbient != null)
@@ -91,13 +106,33 @@ public partial class ControlWindow : Window
             {
                 chkAmbient.IsChecked = false;
                 chkAmbient.IsEnabled = false;
-                chkAmbient.Content = "Match screen ambient (X11 only)";
+                chkAmbient.Content = "Match screen colors (X11 sessions only)";
             }
         }
 
         UpdateModeVisibility(flood);
+        UpdateActiveButtons();
 
         _initializing = prev;
+    }
+
+    /// <summary>Highlight the selected preset and the spotlight button when it's on.</summary>
+    private void UpdateActiveButtons()
+    {
+        if (_mainWindow == null) return;
+
+        var presets = this.FindControl<WrapPanel>("PresetPanel");
+        if (presets != null)
+        {
+            foreach (var child in presets.Children)
+            {
+                if (child is Button b && b.Tag is string tag)
+                    b.Classes.Set("active", tag == _mainWindow.CurrentPreset.ToString());
+            }
+        }
+
+        var spotlight = this.FindControl<Button>("BtnSpotlight");
+        spotlight?.Classes.Set("active", _mainWindow.SpotlightOn);
     }
 
     private void SetSlider(string name, double value)
@@ -133,6 +168,7 @@ public partial class ControlWindow : Window
         bool flood = (sender as CheckBox)?.IsChecked == true;
         _mainWindow.SetIlluminationMode(flood ? IlluminationMode.StudioFlood : IlluminationMode.ThinBorder);
         UpdateModeVisibility(flood);
+        UpdateActiveButtons();
     }
 
     private void Spotlight_Click(object? sender, RoutedEventArgs e)
@@ -155,28 +191,45 @@ public partial class ControlWindow : Window
         _mainWindow.SetAdaptiveAmbient((sender as CheckBox)?.IsChecked == true);
     }
 
+    private void ChkAutostart_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_initializing || sender is not CheckBox chk) return;
+        bool wanted = chk.IsChecked == true;
+        if (!Autostart.SetEnabled(wanted))
+        {
+            // Couldn't write the autostart entry; show the real state instead of lying.
+            _initializing = true;
+            chk.IsChecked = Autostart.IsEnabled;
+            _initializing = false;
+        }
+    }
+
     private void SliderBrightness_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_initializing || _mainWindow == null) return;
         _mainWindow.SetOpacity(e.NewValue);
+        UpdateActiveButtons();
     }
 
     private void SliderColor_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_initializing || _mainWindow == null) return;
         _mainWindow.SetColorId(e.NewValue);
+        UpdateActiveButtons();
     }
 
     private void SliderThickness_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_initializing || _mainWindow == null) return;
         _mainWindow.SetThickness(e.NewValue);
+        UpdateActiveButtons();
     }
 
     private void SliderSpread_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_initializing || _mainWindow == null) return;
         _mainWindow.SetSpread(e.NewValue);
+        UpdateActiveButtons();
     }
 
     private void SliderMargin_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)

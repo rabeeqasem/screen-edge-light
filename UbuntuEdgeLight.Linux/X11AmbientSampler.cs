@@ -4,22 +4,30 @@ using System.Runtime.InteropServices;
 namespace UbuntuEdgeLight;
 
 /// <summary>
-/// Samples the average color near the screen edges using raw Xlib, so the studio
-/// flood can tint itself to match what's on screen (ambient / "screen match" mode).
+/// Samples the average color of a screen region using raw Xlib, so the light can tint
+/// itself to match what's on screen (ambient / "match screen colors" mode).
 ///
-/// X11 only. Under a pure Wayland session XOpenDisplay returns null and
-/// <see cref="Available"/> stays false, so callers degrade gracefully.
+/// Real X11 sessions only. Under Wayland the app still runs through XWayland, but the
+/// XWayland root window doesn't contain other apps' pixels (reads come back black), so
+/// <see cref="Available"/> is false there and callers degrade gracefully.
 /// </summary>
 public sealed class X11AmbientSampler : IDisposable
 {
     private const string Lib = "libX11.so.6";
     private const int ZPixmap = 2;
 
+    // Sample grid: this many horizontal strips across the region, one pixel every
+    // `Step` along each. A handful of 1px-high reads instead of one full-screen grab
+    // keeps each sample to a few KB even on 4K displays.
+    private const int Rows = 12;
+    private const int Step = 32;
+
     [DllImport(Lib)] private static extern IntPtr XOpenDisplay(string? name);
     [DllImport(Lib)] private static extern int XCloseDisplay(IntPtr display);
     [DllImport(Lib)] private static extern IntPtr XDefaultRootWindow(IntPtr display);
-    [DllImport(Lib)] private static extern int XDisplayWidth(IntPtr display, int screen);
-    [DllImport(Lib)] private static extern int XDisplayHeight(IntPtr display, int screen);
+    [DllImport(Lib)] private static extern int XGetGeometry(IntPtr display, IntPtr drawable,
+        out IntPtr root, out int x, out int y, out uint width, out uint height,
+        out uint borderWidth, out uint depth);
     [DllImport(Lib)] private static extern IntPtr XGetImage(IntPtr display, IntPtr drawable,
         int x, int y, uint width, uint height, ulong planeMask, int format);
     [DllImport(Lib)] private static extern ulong XGetPixel(IntPtr image, int x, int y);
@@ -35,8 +43,6 @@ public sealed class X11AmbientSampler : IDisposable
 
     private IntPtr _display;
     private IntPtr _root;
-    private int _width;
-    private int _height;
 
     // Serializes Xlib calls on our connection and guards against Dispose() racing an
     // in-flight Sample() on a background thread.
@@ -50,20 +56,17 @@ public sealed class X11AmbientSampler : IDisposable
         if (RuntimeInformation.ProcessArchitecture != Architecture.X64)
             return;
 
+        if (IsWaylandSession())
+            return;
+
         try
         {
             _display = XOpenDisplay(null);
             if (_display != IntPtr.Zero)
             {
                 _root = XDefaultRootWindow(_display);
-                _width = XDisplayWidth(_display, 0);
-                _height = XDisplayHeight(_display, 0);
-                Available = _width > 0 && _height > 0;
+                Available = _root != IntPtr.Zero;
             }
-        }
-        catch (DllNotFoundException)
-        {
-            Available = false;
         }
         catch (Exception)
         {
@@ -71,12 +74,17 @@ public sealed class X11AmbientSampler : IDisposable
         }
     }
 
+    private static bool IsWaylandSession() =>
+        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")) ||
+        string.Equals(Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"), "wayland",
+            StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
-    /// Grabs the current screen contents and averages a sparse set of pixels within
-    /// a band along the edges. Runs on a background thread (XGetImage can block).
+    /// Averages a sparse grid of pixels inside the given region (root-window pixel
+    /// coordinates). Runs on a background thread (XGetImage can block).
     /// Returns null if unavailable or on any failure.
     /// </summary>
-    public (byte R, byte G, byte B)? Sample()
+    public (byte R, byte G, byte B)? Sample(int x, int y, int width, int height)
     {
         if (!Available)
             return null;
@@ -85,36 +93,49 @@ public sealed class X11AmbientSampler : IDisposable
         {
             if (_display == IntPtr.Zero)
                 return null;
-            return SampleLocked();
+            return SampleLocked(x, y, width, height);
         }
     }
 
-    private (byte R, byte G, byte B)? SampleLocked()
+    private (byte R, byte G, byte B)? SampleLocked(int x, int y, int width, int height)
     {
-        IntPtr image = IntPtr.Zero;
         try
         {
-            image = XGetImage(_display, _root, 0, 0, (uint)_width, (uint)_height, ulong.MaxValue, ZPixmap);
-            if (image == IntPtr.Zero)
+            // Clamp to the root window's *current* size. Screen layout can change at any
+            // time (resolution change, monitor unplugged), and reading outside the root
+            // window is an X protocol error.
+            if (XGetGeometry(_display, _root, out _, out _, out _, out uint rootW, out uint rootH, out _, out _) == 0)
+                return null;
+
+            int x0 = Math.Max(0, x), y0 = Math.Max(0, y);
+            int x1 = Math.Min((int)rootW, x + width), y1 = Math.Min((int)rootH, y + height);
+            int w = x1 - x0, h = y1 - y0;
+            if (w <= 0 || h <= 0)
                 return null;
 
             long rs = 0, gs = 0, bs = 0, n = 0;
-            int band = Math.Min(220, Math.Min(_width, _height) / 3);
-            const int step = 48;
 
-            for (int y = 0; y < _height; y += step)
+            for (int row = 0; row < Rows; row++)
             {
-                for (int x = 0; x < _width; x += step)
-                {
-                    bool nearEdge = x < band || x > _width - band || y < band || y > _height - band;
-                    if (!nearEdge)
-                        continue;
+                int yy = y0 + (int)((row + 0.5) * h / Rows);
+                IntPtr image = XGetImage(_display, _root, x0, yy, (uint)w, 1, ulong.MaxValue, ZPixmap);
+                if (image == IntPtr.Zero)
+                    continue;
 
-                    ulong p = XGetPixel(image, x, y);
-                    rs += (long)((p >> 16) & 0xFF);
-                    gs += (long)((p >> 8) & 0xFF);
-                    bs += (long)(p & 0xFF);
-                    n++;
+                try
+                {
+                    for (int xx = Step / 2; xx < w; xx += Step)
+                    {
+                        ulong p = XGetPixel(image, xx, 0);
+                        rs += (long)((p >> 16) & 0xFF);
+                        gs += (long)((p >> 8) & 0xFF);
+                        bs += (long)(p & 0xFF);
+                        n++;
+                    }
+                }
+                finally
+                {
+                    DestroyImage(image);
                 }
             }
 
@@ -126,10 +147,6 @@ public sealed class X11AmbientSampler : IDisposable
         catch (Exception)
         {
             return null;
-        }
-        finally
-        {
-            DestroyImage(image);
         }
     }
 

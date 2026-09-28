@@ -1,203 +1,50 @@
-# Windows Edge Light
+# Screen Edge Light
 
-A lightweight WPF application that adds a customizable glowing edge light effect around your primary monitor on Windows. Perfect for ambient lighting during video calls, streaming, or just adding a professional touch to your workspace.
+**Look great on every video call.** Screen Edge Light turns the edges of your monitor into a soft, adjustable ring light for Zoom, Google Meet, Teams, Discord, OBS and streaming. No extra hardware needed.
+
+![Screen Edge Light](store/banner.png)
+
+[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/screen-edge-light)
+
+```bash
+sudo snap install screen-edge-light
+```
 
 ## Features
 
-- **Automatic Updates**: Built-in update system checks GitHub Releases for new versions
-- **Primary Monitor Display**: Automatically detects and displays on your primary monitor, even in multi-monitor setups
-- **DPI Aware**: Properly handles high-DPI displays (4K monitors with scaling)
-- **Fluent Design**: Modern UX that fits in with the Windows look and feel
-- **Click-Through Transparency**: Overlay doesn't interfere with your work - all clicks pass through to applications beneath
-- **Customizable Brightness**: Adjust opacity with easy-to-use controls
- - **Adjustable Color Temperature**: Shift the edge light from cooler (blue-ish) to warmer (amber) tones
-- **Toggle On/Off**: Quickly enable or disable the edge light effect
-- **Hideable Controls**: Hide the control toolbar for a cleaner look, restore via tray menu
-- **Always On Top**: Stays visible above all other windows
-- **Exclude from Screen Capture**: Optional setting to hide the edge light from screen sharing (Teams, Zoom) and screenshots
-- **Keyboard Shortcuts**: 
-  - `Ctrl+Shift+L` - Toggle light on/off
-  - `Ctrl+Shift+Up` - Increase brightness
-  - `Ctrl+Shift+Down` - Decrease brightness
-- **Gradient Effect**: Beautiful white gradient with subtle blur for a professional look
+- **Studio presets**: Soft Key, Warm Studio, Daylight, Cool and Candle, one click each
+- **Studio Flood**: a wide, soft glow that actually lights your face, or a classic thin glowing border
+- **Spotlight**: instant full-brightness boost; click again to go back to your settings
+- **Color temperature**: from crisp cool daylight to warm candlelight
+- **Fine-tuning**: brightness, light spread, border thickness, distance from the edge, corner roundness
+- **Auto day / night**: warmer and dimmer in the evening, bright and neutral at midday
+- **Match screen colors**: tints the light to what's on screen (X11 sessions only)
+- **Click-through overlay**: the light never blocks your mouse, so you keep working normally
+- **Start on login**
+- Settings are remembered between sessions
 
-## Screenshots
+## Using it
 
-The application creates a smooth, glowing border around the edges of your primary monitor:
+- The control panel opens when the app starts. Close it with **✕**, and bring it back with the round **⚙** button in the bottom-right corner, or by launching the app again.
+- **Keyboard shortcut to turn the light on/off:** open *Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts*, add a shortcut with the command `screen-edge-light --toggle`, and pick any key combination.
+- **Quit** from the button at the bottom of the control panel.
 
-- Adjustable brightness levels (20% to 100% opacity)
-- Soft blur effect for a natural glow
-- Minimal UI controls that fade in on hover
+## Building from source
 
-![Windows Edge Light](HeroImage.png)
+Requires the .NET 10 SDK (`sudo apt install dotnet-sdk-10.0` on Ubuntu 24.04).
 
-## Installation
-
-### Option 1: Download Pre-built Executable
-
-Download the latest `WindowsEdgeLight.exe` from the [Releases page](https://github.com/shanselman/WindowsEdgeLight/releases). This is a single-file executable that includes everything you need - no .NET installation required!
-
-### Option 2: Build from Source
-
-#### Prerequisites
-
-- Windows 10 or later
-- .NET 10.0 SDK for building
-
-#### Building from Source
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/shanselman/WindowsEdgeLight.git
-   cd WindowsEdgeLight
-   ```
-
-2. Build the project:
-   ```bash
-   cd WindowsEdgeLight
-   dotnet build
-   ```
-
-3. Run the application:
-   ```bash
-   dotnet run
-   ```
-
-#### Creating a Single-File Executable
-
-To create a standalone executable:
 ```bash
-cd WindowsEdgeLight
-dotnet publish -c Release /p:DebugType=None /p:DebugSymbols=false
+dotnet run --project UbuntuEdgeLight.Linux/UbuntuEdgeLight.Linux.csproj
 ```
 
-The executable will be in `bin\Release\net10.0-windows\win-x64\publish\WindowsEdgeLight.exe`
+To build the snap: `snapcraft pack`. The release process is described in [PUBLISHING.md](PUBLISHING.md).
 
-**Note**: WPF applications cannot use AOT compilation or aggressive trimming. The single-file executable is self-contained and compressed (~72MB) but includes the full .NET runtime.
+Built with [Avalonia](https://avaloniaui.net/).
 
-## Usage
+## Credits
 
-1. Launch `WindowsEdgeLight.exe`
-2. The edge light will appear around your primary monitor
-3. Control toolbar appears at the bottom center with these buttons:
-   - 🔅 **Decrease Brightness** - Reduces opacity
-   - 🔆 **Increase Brightness** - Increases opacity
-   - 🌡️ **Cooler Color** - Shifts the glow towards a cooler, blue-ish white
-   - 🔥 **Warmer Color** - Shifts the glow towards a warmer, amber tone
-   - 💡 **Toggle Light** - Turn the effect on/off
-   - 🖥️ **Switch Monitor** - Move to next monitor (if multiple monitors)
-   - 🖥️🖥️ **All Monitors** - Show on all monitors (if multiple monitors)
-   - 🎥 **Exclude from Capture** - Hide from screen sharing and screenshots
-   - ✖ **Exit** - Close the application
-4. Hide the control toolbar for a cleaner look using the tray menu (right-click tray icon → "Hide Controls")
-
-### Screen Sharing Mode
-
-When sharing your screen on video conferencing apps (Teams, Zoom, etc.), you may want the edge light to be visible to you but invisible to viewers. Enable **"Exclude from Screen Capture"** via:
-- Click the 🎥 button in the control toolbar, or
-- Right-click the tray icon → "Exclude from Screen Capture"
-
-**Note**: When this setting is enabled, the edge light will also be excluded from screenshots taken with Windows Snipping Tool, PrintScreen, or other capture tools.
-
-### Keyboard Shortcuts
-
-- **Ctrl+Shift+L**: Toggle the edge light on/off
-- **Ctrl+Shift+Up**: Increase brightness
-- **Ctrl+Shift+Down**: Decrease brightness
-- **Taskbar**: Right-click the taskbar icon for a menu with toggle, brightness, and color temperature controls
-
-## Technical Details
-
-### Architecture
-
-- **Framework**: .NET 10.0 WPF (Windows Presentation Foundation)
-- **Language**: C#
-- **UI**: XAML with transparent window overlay
-- **Monitor Detection**: Windows Forms Screen API for accurate multi-monitor support
-
-### Key Features Implementation
-
-- **Click-Through**: Uses Win32 `WS_EX_TRANSPARENT` and `WS_EX_LAYERED` window styles
-- **DPI Scaling**: Converts physical pixels to WPF Device Independent Pixels for proper sizing
-- **Primary Monitor**: Uses `Screen.PrimaryScreen.Bounds` with DPI correction
-- **Gradient Border**: Custom Rectangle with LinearGradientBrush and BlurEffect
-
-## Multi-Monitor Support
-
-The application specifically targets the **primary monitor** in your display setup:
-- Automatically detects primary monitor position and dimensions
-- Correctly handles DPI scaling (e.g., 150%, 200% on 4K displays)
-- Works with any monitor arrangement (horizontal, vertical, mixed)
-- Does not span across multiple monitors
-
-## Development
-
-### Project Structure
-
-```
-WindowsEdgeLight/
-├── WindowsEdgeLight/
-│   ├── App.xaml              # Application entry point
-│   ├── App.xaml.cs
-│   ├── MainWindow.xaml       # Main UI layout
-│   ├── MainWindow.xaml.cs    # Application logic
-│   ├── WindowsEdgeLight.csproj
-│   └── AssemblyInfo.cs
-└── README.md
-```
-
-### Building
-
-Requires:
-- Visual Studio 2022 or later (with .NET desktop development workload)
-- Or .NET 10.0 SDK for command-line builds
-
-## Version History
-
-**Note**: Versions are automatically managed using GitVersion based on Git tags.
-
-### v0.6 - Automatic Update System
-- Integrated Updatum for automatic updates from GitHub Releases
-- Beautiful update dialog with release notes
-- Download progress tracking
-- One-click install for new versions
-- See [UPDATUM_INTEGRATION.md](UPDATUM_INTEGRATION.md) for details
-
-### v0.3 - Global Hotkeys and Taskbar Support
-- Added global hotkeys for brightness control (Ctrl+Shift+Up/Down)
-- Fixed taskbar overlap - window now respects taskbar area
-- Added taskbar icon for easy right-click close
-- Removed conflicting exit hotkey
-- Added custom ring light icon
-- Added assembly information with author details
-
-### v0.2 - Primary Monitor Display Fix
-- Fixed window to display on primary monitor only
-- Added proper DPI scaling support for high-resolution displays
-- Resolved namespace conflicts with Windows Forms integration
-- Improved multi-monitor setup compatibility
-
-### v0.1 - Initial Release
-- Basic edge light overlay functionality
-- Customizable brightness controls
-- Toggle and keyboard shortcut support
-- Click-through transparency
+Inspired by and originally based on [Windows Edge Light](https://github.com/shanselman/WindowsEdgeLight) by Scott Hanselman.
 
 ## License
 
-This project is provided as-is for personal and educational use.
-
-## Contributing
-
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest new features
-- Submit pull requests
-
-## Acknowledgments
-
-Inspired by the need for professional lighting effects during video conferences and streaming setups.
-
----
-
-**Note**: This application is designed for Windows only and requires the .NET 10.0 runtime.
+MIT

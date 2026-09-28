@@ -16,7 +16,8 @@ public partial class MainWindow : Window
     private ControlWindow? _controlWindow;
     private ToggleWindow? _toggle;
 
-    // Public properties for binding/accessing from ControlWindow
+    // Public properties for binding/accessing from ControlWindow. These are the user's
+    // own (saved) values; spotlight and auto day/night override them only at render time.
     public double CurrentOpacity => _opacity;
     public double CurrentColorTemp => _colorTemperature;
     public double CurrentThickness => _thickness;
@@ -32,7 +33,7 @@ public partial class MainWindow : Window
     public int? ControlWindowX => _settings.ControlWindowX;
     public int? ControlWindowY => _settings.ControlWindowY;
 
-    // Target (logical) values -- what the user/adaptive engine asked for.
+    // Target (logical) values -- what the user asked for. Persisted.
     private double _opacity = 1.0;
     private double _colorTemperature = 0.5;
     private double _thickness = 10.0;
@@ -44,7 +45,12 @@ public partial class MainWindow : Window
     private bool _adaptiveTimeOfDay;
     private bool _adaptiveAmbient;
 
-    // Currently rendered values -- eased toward the targets for smooth transitions.
+    // Time-of-day targets. Never persisted, so turning auto day/night off returns the
+    // light to exactly what the user had before.
+    private double _todOpacity = 1.0;
+    private double _todColorTemperature = 0.5;
+
+    // Currently rendered values -- eased toward the effective targets for smooth transitions.
     private double _curOpacity = 1.0;
     private double _curThickness = 10.0;
     private double _curMargin = 0.0;
@@ -60,9 +66,8 @@ public partial class MainWindow : Window
     private X11AmbientSampler? _sampler;
     private int _samplingBusy; // 0 = idle, 1 = a background Sample() is in flight
 
-    // Spotlight: snapshot of state to restore when toggled off.
+    // Spotlight: a temporary full-brightness override on top of the user's values.
     private bool _spotlightOn;
-    private (double opacity, double temp, double spread, IlluminationMode mode)? _preSpotlight;
 
     private DispatcherTimer? _saveTimer;
     private DispatcherTimer? _animTimer;
@@ -121,19 +126,9 @@ public partial class MainWindow : Window
         _adaptiveTimeOfDay = _settings.AdaptiveTimeOfDay;
         _adaptiveAmbient = _settings.AdaptiveAmbient;
 
-        // Start the rendered state already settled on the targets (no startup animation).
-        _curOpacity = _opacity;
-        _curThickness = _thickness;
-        _curMargin = _margin;
-        _curRadius = _cornerRadius;
-        _curSpread = _spread;
-        _curColor = TargetColor();
-
-        Render();
-
         if (_adaptiveTimeOfDay)
         {
-            ApplyTimeOfDay();
+            UpdateTimeOfDayTargets();
             _adaptiveTimer.Start();
         }
         if (_adaptiveAmbient)
@@ -142,6 +137,16 @@ public partial class MainWindow : Window
             if (_sampler?.Available == true)
                 _ambientTimer.Start();
         }
+
+        // Start the rendered state already settled on the targets (no startup animation).
+        _curOpacity = EffectiveOpacity;
+        _curThickness = _thickness;
+        _curMargin = _margin;
+        _curRadius = _cornerRadius;
+        _curSpread = EffectiveSpread;
+        _curColor = TargetColor();
+
+        Render();
     }
 
     protected override void OnOpened(EventArgs e)
@@ -149,18 +154,33 @@ public partial class MainWindow : Window
         base.OnOpened(e);
         PositionWindow();
 
+        // Follow monitor hot-plug, docking and resolution/scale changes; otherwise the
+        // overlay keeps its startup geometry and ends up the wrong size or off-screen.
+        Screens.Changed += OnScreensChanged;
+
         // Make the overlay click-through so it never blocks the desktop and can stay
         // permanently visible (no hide-on-interaction needed).
         ApplyClickThrough();
 
         // Show the floating toggle button and open the control panel on launch. The
-        // system tray is unavailable under GNOME + snap confinement and clicking the app
-        // icon won't spawn a second process, so the always-visible button is the reliable
-        // way to reopen the panel after the user closes it.
+        // system tray is unavailable under GNOME + snap confinement, so the always-visible
+        // button is the reliable way to reopen the panel after the user closes it.
         Dispatcher.UIThread.Post(() =>
         {
             ShowToggleButton();
             ShowControls();
+        }, DispatcherPriority.Background);
+    }
+
+    private void OnScreensChanged(object? sender, EventArgs e)
+    {
+        // Screens reports the change before the new layout has fully settled on some
+        // window managers, so re-layout on the next dispatcher pass.
+        Dispatcher.UIThread.Post(() =>
+        {
+            PositionWindow();
+            PositionToggleButton();
+            ApplyClickThrough();
         }, DispatcherPriority.Background);
     }
 
@@ -185,6 +205,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
+        Screens.Changed -= OnScreensChanged;
         _sampler?.Dispose();
         _toggle?.Close();
 
@@ -201,6 +222,14 @@ public partial class MainWindow : Window
     public void ShowToggleButton()
     {
         _toggle ??= new ToggleWindow(this);
+        PositionToggleButton();
+        _toggle.Show();
+        RaiseToggleButton();
+    }
+
+    private void PositionToggleButton()
+    {
+        if (_toggle == null) return;
 
         // Park it near the bottom-right of the primary working area. Position is in
         // physical pixels while the 44px window size is logical, so scale the inset
@@ -212,9 +241,33 @@ public partial class MainWindow : Window
             int inset = (int)Math.Round(64 * screen.Scaling);
             _toggle.Position = new PixelPoint(area.X + area.Width - inset, area.Y + area.Height - inset);
         }
+    }
 
-        _toggle.Show();
+    /// <summary>
+    /// Put the floating button back above the overlay. Both windows are always-on-top,
+    /// so whichever was raised last wins; re-asserting the overlay's Topmost would
+    /// otherwise bury the button under the (brightest, corner) part of the light.
+    /// </summary>
+    private void RaiseToggleButton()
+    {
+        if (_toggle == null || !_toggle.IsVisible) return;
+        _toggle.Topmost = false;
         _toggle.Topmost = true;
+    }
+
+    /// <summary>Show or hide the light itself (used by `screen-edge-light --toggle`).</summary>
+    public void ToggleLight()
+    {
+        if (IsVisible)
+        {
+            Hide();
+        }
+        else
+        {
+            Show();
+            PositionWindow();
+            SetOverlayTopmost(_controlWindow is not { IsVisible: true });
+        }
     }
 
     /// <summary>Open the panel if it's hidden, hide it if it's showing.</summary>
@@ -252,7 +305,7 @@ public partial class MainWindow : Window
 
         // Keep the floating button above the panel so it can always close it again.
         _toggle?.Show();
-        if (_toggle != null) _toggle.Topmost = true;
+        RaiseToggleButton();
     }
 
     /// <summary>Called by the control window when it is hidden, to restore always-on-top.</summary>
@@ -269,6 +322,7 @@ public partial class MainWindow : Window
     {
         this.Topmost = topmost;
         ApplyClickThrough();
+        RaiseToggleButton();
     }
 
     private void PositionWindow()
@@ -304,25 +358,18 @@ public partial class MainWindow : Window
         QueueSave();
     }
 
-    // --- Manual adjustments (slider/hotkey driven) ---
-
-    public void IncreaseBrightness() => SetOpacity(_opacity + 0.1);
-    public void DecreaseBrightness() => SetOpacity(_opacity - 0.1);
+    // --- Manual adjustments (slider driven) ---
 
     public void SetOpacity(double value)
     {
         _opacity = Math.Clamp(value, 0.2, 1.0);
         _settings.Opacity = _opacity;
+        ExitSpotlight();
         MarkCustom();
         QueueSave();
         StartAnim();
     }
 
-    public void IncreaseColorTemperature() => SetColorId(_colorTemperature + 0.1);
-    public void DecreaseColorTemperature() => SetColorId(_colorTemperature - 0.1);
-
-    public void IncreaseThickness() => SetThickness(_thickness + 1.0);
-    public void DecreaseThickness() => SetThickness(_thickness - 1.0);
     public void SetThickness(double value)
     {
         _thickness = Math.Clamp(value, 1.0, 50.0);
@@ -332,8 +379,6 @@ public partial class MainWindow : Window
         StartAnim();
     }
 
-    public void IncreaseMargin() => SetMargin(_margin + 2.0);
-    public void DecreaseMargin() => SetMargin(_margin - 2.0);
     public void SetMargin(double value)
     {
         _margin = Math.Max(0.0, value);
@@ -342,8 +387,6 @@ public partial class MainWindow : Window
         StartAnim();
     }
 
-    public void IncreaseCornerRadius() => SetCornerRadius(_cornerRadius + 5.0);
-    public void DecreaseCornerRadius() => SetCornerRadius(_cornerRadius - 5.0);
     public void SetCornerRadius(double value)
     {
         _cornerRadius = Math.Max(0.0, value);
@@ -356,6 +399,7 @@ public partial class MainWindow : Window
     {
         _colorTemperature = Math.Clamp(value, 0.0, 1.0);
         _settings.ColorTemperature = _colorTemperature;
+        ExitSpotlight();
         MarkCustom();
         QueueSave();
         StartAnim();
@@ -367,6 +411,8 @@ public partial class MainWindow : Window
     {
         _spread = Math.Clamp(value, 20.0, 600.0);
         _settings.Spread = _spread;
+        ExitSpotlight();
+        MarkCustom();
         QueueSave();
         StartAnim();
     }
@@ -375,6 +421,8 @@ public partial class MainWindow : Window
     {
         _illumination = mode;
         _settings.Illumination = mode;
+        ExitSpotlight();
+        MarkCustom();
         QueueSave();
         Render();
         StartAnim();
@@ -415,10 +463,11 @@ public partial class MainWindow : Window
 
         _preset = mode;
 
-        // Picking a preset supersedes spotlight; drop the snapshot so toggling
-        // spotlight off later can't silently undo the preset.
+        // An explicit preset choice wins over the temporary overrides: otherwise spotlight
+        // would hide it, and auto day/night would replace its color within a minute.
         _spotlightOn = false;
-        _preSpotlight = null;
+        if (_adaptiveTimeOfDay)
+            SetAdaptiveTimeOfDay(false);
 
         PersistAll();
         QueueSave();
@@ -428,33 +477,36 @@ public partial class MainWindow : Window
 
     public void ToggleSpotlight()
     {
-        if (!_spotlightOn)
-        {
-            _preSpotlight = (_opacity, _colorTemperature, _spread, _illumination);
-            _opacity = 1.0;
-            _colorTemperature = 0.5;
-            _spread = Math.Max(_spread, 280);
-            _illumination = IlluminationMode.StudioFlood;
-            _spotlightOn = true;
-        }
-        else if (_preSpotlight is { } prev)
-        {
-            _opacity = prev.opacity;
-            _colorTemperature = prev.temp;
-            _spread = prev.spread;
-            _illumination = prev.mode;
-            _spotlightOn = false;
-        }
-        else
-        {
-            _spotlightOn = false;
-        }
-
+        _spotlightOn = !_spotlightOn;
         Render();
         StartAnim();
     }
 
+    private void ExitSpotlight()
+    {
+        // Adjusting the light by hand means the user wants to see their change, which
+        // spotlight's fixed full-brightness look would otherwise mask.
+        if (_spotlightOn)
+        {
+            _spotlightOn = false;
+            Render();
+        }
+    }
+
     public bool SpotlightOn => _spotlightOn;
+
+    // --- Effective values: the user's values with spotlight / auto day-night applied ---
+
+    private double EffectiveOpacity =>
+        _spotlightOn ? 1.0 : _adaptiveTimeOfDay ? _todOpacity : _opacity;
+
+    private double EffectiveColorTemperature =>
+        _spotlightOn ? 0.5 : _adaptiveTimeOfDay ? _todColorTemperature : _colorTemperature;
+
+    private double EffectiveSpread => _spotlightOn ? Math.Max(_spread, 280) : _spread;
+
+    private IlluminationMode EffectiveIllumination =>
+        _spotlightOn ? IlluminationMode.StudioFlood : _illumination;
 
     // --- Adaptive engine ---
 
@@ -472,6 +524,7 @@ public partial class MainWindow : Window
         else
         {
             _adaptiveTimer?.Stop();
+            StartAnim(); // ease back to the user's own brightness/color
         }
     }
 
@@ -498,7 +551,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>True only when ambient sampling is actually usable (X11 present).</summary>
+    /// <summary>True only when ambient sampling is actually usable (X11 session).</summary>
     public bool AmbientAvailable
     {
         get
@@ -518,6 +571,22 @@ public partial class MainWindow : Window
         if (!_adaptiveAmbient || _sampler?.Available != true)
             return;
 
+        var screen = Screens.Primary ?? Screens.All.FirstOrDefault();
+        if (screen == null)
+            return;
+
+        // Sample only the part of the screen the light doesn't cover. Sampling the edges
+        // would mostly measure our own glow, and the tint would drift toward itself.
+        double lightReach = _margin + (EffectiveIllumination == IlluminationMode.StudioFlood
+            ? EffectiveSpread
+            : _thickness * 6);
+        int inset = (int)Math.Round((lightReach + 24) * screen.Scaling);
+        var b = screen.Bounds;
+        int rx = b.X + inset, ry = b.Y + inset;
+        int rw = b.Width - 2 * inset, rh = b.Height - 2 * inset;
+        if (rw < 64 || rh < 64)
+            return;
+
         // Skip if a previous sample is still running, so we never issue two concurrent
         // XGetImage calls against the sampler's single Xlib connection.
         if (Interlocked.Exchange(ref _samplingBusy, 1) == 1)
@@ -528,7 +597,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var c = sampler.Sample();
+                var c = sampler.Sample(rx, ry, rw, rh);
                 if (c is { } v)
                 {
                     Dispatcher.UIThread.Post(() =>
@@ -550,18 +619,19 @@ public partial class MainWindow : Window
         if (!_adaptiveTimeOfDay)
             return;
 
+        UpdateTimeOfDayTargets();
+        StartAnim();
+    }
+
+    private void UpdateTimeOfDayTargets()
+    {
         // dayFactor: +1 around 13:00 (coolest/brightest), -1 around 01:00 (warmest/dimmest).
         double hours = DateTime.Now.TimeOfDay.TotalHours;
         double dayFactor = Math.Cos((hours - 13.0) / 24.0 * 2.0 * Math.PI);
 
         // Map [-1, +1] -> targets.
-        _colorTemperature = Map(dayFactor, 1.0, -1.0, 0.35, 0.90);
-        _opacity = Math.Clamp(Map(dayFactor, 1.0, -1.0, 1.00, 0.70), 0.2, 1.0);
-
-        _settings.ColorTemperature = _colorTemperature;
-        _settings.Opacity = _opacity;
-        QueueSave();
-        StartAnim();
+        _todColorTemperature = Map(dayFactor, 1.0, -1.0, 0.35, 0.90);
+        _todOpacity = Math.Clamp(Map(dayFactor, 1.0, -1.0, 1.00, 0.70), 0.2, 1.0);
     }
 
     private static double Map(double v, double inMin, double inMax, double outMin, double outMax)
@@ -588,7 +658,7 @@ public partial class MainWindow : Window
 
     private Color TargetColor()
     {
-        var baseColor = LerpColor(_coolColor, _warmColor, _colorTemperature);
+        var baseColor = LerpColor(_coolColor, _warmColor, EffectiveColorTemperature);
         if (_adaptiveAmbient && _ambient is { } amb)
         {
             baseColor = LerpColor(baseColor, amb, 0.35);
@@ -606,31 +676,33 @@ public partial class MainWindow : Window
     {
         const double k = 0.22;
         var target = TargetColor();
+        double opacity = EffectiveOpacity;
+        double spread = EffectiveSpread;
 
-        _curOpacity = Lerp(_curOpacity, _opacity, k);
+        _curOpacity = Lerp(_curOpacity, opacity, k);
         _curThickness = Lerp(_curThickness, _thickness, k);
         _curMargin = Lerp(_curMargin, _margin, k);
         _curRadius = Lerp(_curRadius, _cornerRadius, k);
-        _curSpread = Lerp(_curSpread, _spread, k);
+        _curSpread = Lerp(_curSpread, spread, k);
         _curColor = LerpColor(_curColor, target, k);
 
         Render();
 
         bool settled =
-            Close(_curOpacity, _opacity, 0.002) &&
+            Close(_curOpacity, opacity, 0.002) &&
             Close(_curThickness, _thickness, 0.05) &&
             Close(_curMargin, _margin, 0.05) &&
             Close(_curRadius, _cornerRadius, 0.05) &&
-            Close(_curSpread, _spread, 0.2) &&
+            Close(_curSpread, spread, 0.2) &&
             ColorClose(_curColor, target, 2);
 
         if (settled)
         {
-            _curOpacity = _opacity;
+            _curOpacity = opacity;
             _curThickness = _thickness;
             _curMargin = _margin;
             _curRadius = _cornerRadius;
-            _curSpread = _spread;
+            _curSpread = spread;
             _curColor = target;
             Render();
             _animTimer?.Stop();
@@ -639,7 +711,7 @@ public partial class MainWindow : Window
 
     private void Render()
     {
-        bool flood = _illumination == IlluminationMode.StudioFlood;
+        bool flood = EffectiveIllumination == IlluminationMode.StudioFlood;
 
         if (_flood != null) _flood.IsVisible = flood;
         if (_border != null) _border.IsVisible = !flood;

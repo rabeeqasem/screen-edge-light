@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -9,7 +9,7 @@
     <!-- Drop the system ICU dependency: avoids a common snap-confinement crash source
          and shrinks the self-contained bundle. The overlay needs no culture-specific formatting. -->
     <InvariantGlobalization>true</InvariantGlobalization>
-    <Version>1.1.8</Version>
+    <Version>1.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

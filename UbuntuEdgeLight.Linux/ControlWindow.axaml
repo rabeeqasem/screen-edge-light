@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="320" d:DesignHeight="640"
         Width="320" SizeToContent="Height"
         x:Class="UbuntuEdgeLight.ControlWindow"
-        Title="Controls"
+        Title="Screen Edge Light"
         TransparencyLevelHint="Transparent"
         Background="Transparent"
         SystemDecorations="None"
@@ -24,6 +24,16 @@
         <Style Selector="Button.preset:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#44FFFFFF" />
         </Style>
+        <!-- The active preset / spotlight is shown in the light's own warm-white. -->
+        <Style Selector="Button.preset.active">
+            <Setter Property="Background" Value="#F5DDB4" />
+            <Setter Property="Foreground" Value="#1A1A1A" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.preset.active:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FFE9C9" />
+            <Setter Property="Foreground" Value="#1A1A1A" />
+        </Style>
         <Style Selector="TextBlock.section">
             <Setter Property="Foreground" Value="#AAFFFFFF" />
             <Setter Property="FontSize" Value="11" />
@@ -40,14 +50,14 @@
         <StackPanel Orientation="Vertical" Spacing="12">
             <!-- Header -->
             <Grid ColumnDefinitions="*, Auto">
-                <TextBlock Text="Studio Light" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center"/>
+                <TextBlock Text="Screen Edge Light" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center"/>
                 <Button Grid.Column="1" Content="✕" Click="Close_Click" Background="Transparent" Foreground="White" BorderThickness="0"/>
             </Grid>
 
             <!-- Presets -->
             <StackPanel Spacing="6">
                 <TextBlock Classes="section" Text="PRESETS"/>
-                <WrapPanel Orientation="Horizontal">
+                <WrapPanel Name="PresetPanel" Orientation="Horizontal">
                     <Button Classes="preset" Content="Soft Key"     Click="Preset_Click" Tag="SoftKey"    Margin="0,0,6,6"/>
                     <Button Classes="preset" Content="Warm Studio"  Click="Preset_Click" Tag="WarmStudio" Margin="0,0,6,6"/>
                     <Button Classes="preset" Content="Daylight"     Click="Preset_Click" Tag="Daylight"   Margin="0,0,6,6"/>
@@ -68,7 +78,7 @@
             <StackPanel>
                 <Grid ColumnDefinitions="*, Auto">
                     <TextBlock Text="Brightness 🔆" Foreground="LightGray" FontSize="12"/>
-                    <TextBlock Text="{Binding ElementName=SliderBrightness, Path=Value, StringFormat={}{0:0.0}}" Foreground="Gray" FontSize="12"/>
+                    <TextBlock Name="BrightnessValue" Grid.Column="1" Text="{Binding ElementName=SliderBrightness, Path=Value, StringFormat={}{0:0%}}" Foreground="Gray" FontSize="12"/>
                 </Grid>
                 <Slider Name="SliderBrightness" Minimum="0.2" Maximum="1.0" ValueChanged="SliderBrightness_ValueChanged" />
             </StackPanel>
@@ -76,8 +86,10 @@
             <!-- Color Temp -->
             <StackPanel>
                 <Grid ColumnDefinitions="Auto, *, Auto">
-                    <TextBlock Text="❄️" Foreground="LightBlue"/>
-                    <TextBlock Grid.Column="2" Text="🔥" Foreground="Orange"/>
+                    <TextBlock Text="❄️ Cool" Foreground="LightGray" FontSize="12"/>
+                    <TextBlock Name="ColorAutoLabel" Grid.Column="1" Text="set by Auto day / night" Foreground="Gray"
+                               FontSize="11" HorizontalAlignment="Center" IsVisible="False"/>
+                    <TextBlock Grid.Column="2" Text="Warm 🔥" Foreground="LightGray" FontSize="12"/>
                 </Grid>
                 <Slider Name="SliderColor" Minimum="0.0" Maximum="1.0" ValueChanged="SliderColor_ValueChanged" />
             </StackPanel>
@@ -86,7 +98,7 @@
             <StackPanel Name="SpreadPanel">
                 <Grid ColumnDefinitions="*, Auto">
                     <TextBlock Text="Light Spread" Foreground="LightGray" FontSize="12"/>
-                    <TextBlock Text="{Binding ElementName=SliderSpread, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ElementName=SliderSpread, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
                 </Grid>
                 <Slider Name="SliderSpread" Minimum="20" Maximum="600" ValueChanged="SliderSpread_ValueChanged" />
             </StackPanel>
@@ -95,7 +107,7 @@
             <StackPanel Name="ThicknessPanel">
                 <Grid ColumnDefinitions="*, Auto">
                     <TextBlock Text="Border Thickness" Foreground="LightGray" FontSize="12"/>
-                    <TextBlock Text="{Binding ElementName=SliderThickness, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ElementName=SliderThickness, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
                 </Grid>
                 <Slider Name="SliderThickness" Minimum="1" Maximum="50" ValueChanged="SliderThickness_ValueChanged" />
             </StackPanel>
@@ -104,7 +116,7 @@
             <StackPanel>
                 <Grid ColumnDefinitions="*, Auto">
                     <TextBlock Text="Distance from Edge" Foreground="LightGray" FontSize="12"/>
-                    <TextBlock Text="{Binding ElementName=SliderMargin, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ElementName=SliderMargin, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
                 </Grid>
                 <Slider Name="SliderMargin" Minimum="0" Maximum="100" ValueChanged="SliderMargin_ValueChanged" />
             </StackPanel>
@@ -113,7 +125,7 @@
             <StackPanel Name="RadiusPanel">
                 <Grid ColumnDefinitions="*, Auto">
                     <TextBlock Text="Corner Roundness" Foreground="LightGray" FontSize="12"/>
-                    <TextBlock Text="{Binding ElementName=SliderRadius, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ElementName=SliderRadius, Path=Value, StringFormat={}{0:0}}" Foreground="Gray" FontSize="12"/>
                 </Grid>
                 <Slider Name="SliderRadius" Minimum="0" Maximum="100" ValueChanged="SliderRadius_ValueChanged" />
             </StackPanel>
@@ -122,12 +134,17 @@
 
             <!-- Adaptive -->
             <StackPanel Spacing="6">
-                <TextBlock Classes="section" Text="ADAPTIVE"/>
-                <CheckBox Name="ChkAutoDayNight" Content="Auto day / night" IsCheckedChanged="ChkAutoDayNight_Changed"/>
-                <CheckBox Name="ChkAmbient" Content="Match screen ambient" IsCheckedChanged="ChkAmbient_Changed"/>
+                <TextBlock Classes="section" Text="AUTOMATIC"/>
+                <CheckBox Name="ChkAutoDayNight" Content="Auto day / night (warmer &amp; dimmer at night)" IsCheckedChanged="ChkAutoDayNight_Changed"/>
+                <CheckBox Name="ChkAmbient" Content="Match screen colors" IsCheckedChanged="ChkAmbient_Changed"/>
+                <CheckBox Name="ChkAutostart" Content="Start on login" IsCheckedChanged="ChkAutostart_Changed"/>
             </StackPanel>
 
             <Separator Background="#33FFFFFF" Height="1" />
+
+            <!-- First-impression hint: the two things new users can't discover by looking -->
+            <TextBlock Text="Clicks pass straight through the light. Use the ⚙ button in the corner to reopen this panel."
+                       Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap"/>
 
             <!-- Quit -->
             <Button Content="Quit Screen Edge Light" Click="Exit_Click"

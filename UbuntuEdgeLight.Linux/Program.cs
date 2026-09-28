@@ -67,26 +67,30 @@ class Program
             "UbuntuEdgeLight",
             "instance.lock");
 
+        FileStream lockFile;
         try
         {
             var dir = Path.GetDirectoryName(lockFilePath);
             if (dir != null) Directory.CreateDirectory(dir);
 
-            // Try to open the file with exclusive access. If fails, app is running.
-            using var lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-
-            // Keep the lockFile open for the lifetime of the app
-            BuildAvaloniaApp()
-                .StartWithClassicDesktopLifetime(args);
-
-            // Lock is released when 'lockFile' is disposed at end of using block
+            // Try to open the file with exclusive access. If it fails, the app is running.
+            lockFile = new FileStream(lockFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
         catch (IOException)
         {
-            // Already running: the tray menu is unreliable under GNOME+snap, so a second
-            // launch (e.g. clicking the app icon again) re-opens the control window.
+            // Already running: a second launch (e.g. clicking the app icon again)
+            // re-opens the control window instead.
             SendIpcMessage("SHOW_CONTROLS");
             return;
+        }
+
+        // Keep the lock held for the lifetime of the app. Only the lock acquisition above
+        // is treated as "already running": an IOException while the app is running must
+        // surface as a real error, not be mistaken for a second instance and exit silently.
+        using (lockFile)
+        {
+            BuildAvaloniaApp()
+                .StartWithClassicDesktopLifetime(args);
         }
     }
 
@@ -121,9 +125,9 @@ class Program
                         }
                         var message = sb.ToString().Trim();
 
-                        if (message == "TOGGLE")
+                        if (message == "TOGGLE" && mainWindow is MainWindow light)
                         {
-                            App.ToggleLight(mainWindow);
+                            Dispatcher.UIThread.Post(() => light.ToggleLight());
                         }
                         else if (message == "SHOW_CONTROLS" && mainWindow is MainWindow main)
                         {
